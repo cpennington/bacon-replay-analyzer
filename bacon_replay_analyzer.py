@@ -2,6 +2,8 @@ import json
 import sys
 from configparser import ConfigParser
 from enum import Enum
+import attr
+from collections import defaultdict
 
 # repoFile = open(r"BCO-resource\bco_repo.json", encoding='utf-8')
 # #replayTest = open(r"BCO-resource\1eaf872c-e5bc-4d67-a6b7-0150acbc4f0a_replay.bcr", encoding='utf-8')
@@ -27,6 +29,37 @@ def show_fighter(event_data, step):
 def int_temp(event_data, field):
     return int(event_data[field][:event_data[field].find(".")])
 
+class EventId(Enum):
+    reveal = -812
+    ante = -804
+    ante_options = -1201
+    pair_options = -1200
+    discard = -815
+
+class Event:
+    def __init__(self, index, event_type_id, previous_index, *fields):
+        self.index = index
+        try:
+            self.event_type_id = EventId(event_type_id[0])
+        except ValueError:
+            self.event_type_id = event_type_id[0]
+        self.previous_index = previous_index
+        self.fields = fields
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.index}, {self.event_type_id}, {self.previous_index}, *{self.fields})"
+
+class Setup(Event):
+    pass
+
+EVENT_TYPES = defaultdict(lambda: Event, {
+    # EventId.reveal: Reveal,
+    # EventId.ante: Ante,
+    # EventId.ante_options: AnteOptions,
+    # EventId.pair_options: PairOptions,
+    # EventId.discard: Discard
+})
+
 @attr.s
 class GameEventData:
     event_id = attr.ib(converter=int)
@@ -39,13 +72,12 @@ class GameEventData:
 
 @attr.s
 class GameStateQuery:
-
+    pass
 
 class Replay:
     def __init__(self, filename):
         self.parsed = ConfigParser()
         self.parsed.read([filename])
-        print(sorted(int(section) for section in self.parsed.sections() if section not in ('GAME_SETUP', 'SIZE')))
 
     def raw_tuple(self, timestamp):
         section = self.parsed[timestamp]
@@ -65,10 +97,26 @@ class Replay:
         elif read_type == "real":
             return (int(float(str_value)), type)
 
+    @property
     def raw_tuples(self):
-        yield self.raw_tuple("GAME_SETUP")
+        yield ("SETUP", self.raw_tuple("GAME_SETUP"))
         for index in range(2, int(float(self.parsed['SIZE'].get('size').strip('"')))):
-            yield self.raw_tuple(str(index))
+            yield (index, self.raw_tuple(str(index)))
+
+    def parsed_tuple(self, index, raw_tuple):
+        if index == 'SETUP':
+            return Setup(*raw_tuple)
+        else:
+            try:
+                event_type = EventId(raw_tuple[0][0])
+            except ValueError:
+                event_type = raw_tuple[0][0]
+            return EVENT_TYPES[event_type](index, *raw_tuple)
+
+    @property
+    def parsed_tuples(self):
+        for index, tuple in self.raw_tuples:
+            yield self.parsed_tuple(index, tuple)
 
 def parse_replay(filename):
     replayEventDict = {}
@@ -170,5 +218,5 @@ def parse_replay(filename):
 
 if __name__ == "__main__":
     replay = Replay(sys.argv[1])
-    for tuple in replay.raw_tuples():
+    for tuple in replay.parsed_tuples:
         print(tuple)
