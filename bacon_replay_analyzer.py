@@ -67,11 +67,12 @@ class Event:
 
     @property
     def described_fields(self):
+        event_data = bco_repo.game_event_data.get(self.event_type_id, {})
         for idx, value in enumerate(self.fields):
             if idx in self.KNOWN_FIELDS:
                 yield (self.KNOWN_FIELDS[idx], getattr(self, self.KNOWN_FIELDS[idx]))
-            elif idx in bco_repo.game_event_data.get(self.event_type_id, {}):
-                yield (bco_repo.game_event_data.get(self.event_type_id, {})[idx-1].attr_description, value)
+            elif (idx-1) in event_data:
+                yield (event_data[idx-1].attr_description, value)
             else:
                 yield ('UNKNOWN', value)
 
