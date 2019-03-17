@@ -4,6 +4,7 @@ from configparser import ConfigParser
 from enum import Enum
 import attr
 from collections import defaultdict
+from pprint import pprint
 
 # repoFile = open(r"BCO-resource\bco_repo.json", encoding='utf-8')
 # #replayTest = open(r"BCO-resource\1eaf872c-e5bc-4d67-a6b7-0150acbc4f0a_replay.bcr", encoding='utf-8')
@@ -36,15 +37,43 @@ class EventId(Enum):
     pair_options = -1200
     discard = -815
 
-class Event:
-    def __init__(self, index, event_type_id, previous_index, *fields):
-        self.index = index
+    @classmethod
+    def read(cls, value):
         try:
-            self.event_type_id = EventId(event_type_id[0])
+            return EventId(value)
         except ValueError:
-            self.event_type_id = event_type_id[0]
-        self.previous_index = previous_index
+            return value
+
+class Event:
+    KNOWN_FIELDS = {
+        0: 'event_type_id',
+        1: 'previous_index',
+    }
+
+    def __init__(self, index, *fields):
+        self.index = index
         self.fields = fields
+
+    @property
+    def event_type_id(self):
+        try:
+            return EventId(self.fields[0][0])
+        except ValueError:
+            return self.fields[0][0]
+
+    @property
+    def previous_index(self):
+        return self.fields[1][0]
+
+    @property
+    def described_fields(self):
+        for idx, value in enumerate(self.fields):
+            if idx in self.KNOWN_FIELDS:
+                yield (self.KNOWN_FIELDS[idx], getattr(self, self.KNOWN_FIELDS[idx]))
+            elif idx in bco_repo.game_event_data.get(self.event_type_id, {}):
+                yield (bco_repo.game_event_data.get(self.event_type_id, {})[idx-1].attr_description, value)
+            else:
+                yield ('UNKNOWN', value)
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.index}, {self.event_type_id}, {self.previous_index}, *{self.fields})"
@@ -60,19 +89,51 @@ EVENT_TYPES = defaultdict(lambda: Event, {
     # EventId.discard: Discard
 })
 
+
 @attr.s
 class GameEventData:
     event_id = attr.ib(converter=int)
     attr_index = attr.ib(converter=int)
-    game_state_query = attr.ib(converter=int)
-    index_3 = attr.ib(converter=int)
-    index_4 = attr.ib(converter=int)
-    index_5 = attr.ib(converter=int)
+    game_state_query = attr.ib(converter=lambda v: bco_repo.game_state_query[int(v)])
+    param_4 = attr.ib(converter=int)
+    param_5 = attr.ib(converter=int)
     attr_description = attr.ib()
 
 @attr.s
 class GameStateQuery:
-    pass
+    id = attr.ib(converter=int)
+    name = attr.ib()
+    description = attr.ib()
+    param_3 = attr.ib(converter=int)
+    func = attr.ib()
+    param_name = attr.ib()
+    param_6 = attr.ib(converter=int)
+    param_7 = attr.ib()
+    param_8 = attr.ib(converter=int)
+
+
+class BCORepo:
+    def __init__(self, repo_file):
+        self.data = json.load(repo_file)
+
+        self.game_state_query = {
+            int(row[0]): GameStateQuery(*row)
+            for row in self.data['repo']['gamestatequery']
+        }
+
+        self._game_event_data = None
+
+    @property
+    def game_event_data(self):
+        if self._game_event_data is None:
+            self._game_event_data = defaultdict(dict)
+            for row in self.data['repo']['gameeventdata']:
+                self._game_event_data[EventId.read(int(row[0]))][int(row[1])] = GameEventData(*row)
+        return self._game_event_data
+
+with open('./bco_repo.json') as data_file:
+    bco_repo = BCORepo(data_file)
+
 
 class Replay:
     def __init__(self, filename):
@@ -219,4 +280,4 @@ def parse_replay(filename):
 if __name__ == "__main__":
     replay = Replay(sys.argv[1])
     for tuple in replay.parsed_tuples:
-        print(tuple)
+        pprint(list(tuple.described_fields))
