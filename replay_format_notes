@@ -1,0 +1,43 @@
+0_value is event ID
+1_value is just previous event number
+
+EVENT ID -812 corresponds to reveal
+2_value???
+3_value???
+4_value is base
+5_value is style
+
+EVENT ID -804 corresponds to ante
+3_value is ante
+
+EVENT ID -1201 is ante option list
+3_value is number of ante options
+4+ is all ante IDs
+
+EVENT ID -1200 is all available finishers/styles/bases
+2_value is number of bases
+then ??? number of bases follows
+number of styles
+then ??? number of styles
+finisher p0
+number of bases
+??? bases follow
+number of styles
+??? styles follow
+finisher p1
+
+EVENT ID -815 corresponds to discard pile
+4_value is discard style 2
+5_value is discard base 2
+7_value is discard style 1
+8_value is discard base 1
+
+GAME_SETUP
+2_value is fighter ID 0
+between 2-9? is player 0 data
+10_value is fighter ID 1
+10-? is player 1 data
+
+"gameeventdata":
+first value in list is ID
+3rd value is gamestatequery?
