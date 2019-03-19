@@ -87,7 +87,7 @@ EVENT_TYPES = defaultdict(lambda: Event, {
 
 class Replay:
     def __init__(self, filename):
-        self.name = filename
+        self.name = os.path.basename(filename)
         self.parsed = ConfigParser()
         self.parsed.read([filename])
 
@@ -124,13 +124,15 @@ class Replay:
     def winner(self):
         events = list(self.parsed_tuples)
         end_events = [event for event in events if event.event_type_id in (EventId.player_wins, EventId.concede)]
-        assert len(end_events) == 1, f"Expected exactly 1 end-game event, saw {len(end_events)} in {self.name}"
-        if end_events[0].event_type_id == EventId.player_wins:
-            winning_index = end_events[0].fields[2][0]
-        elif end_events[0].event_type_id == EventId.concede:
-            winning_index = 1 - end_events[0].fields[2][0]
-
-        return getattr(self, f'player_{winning_index}')
+        assert len(end_events) <= 1, f"Expected exactly 1 end-game event, saw {len(end_events)} in {self.name}"
+        if end_events:
+            if end_events[0].event_type_id == EventId.player_wins:
+                winning_index = end_events[0].fields[2][0]
+            elif end_events[0].event_type_id == EventId.concede:
+                winning_index = 1 - end_events[0].fields[2][0]
+            return getattr(self, f'player_{winning_index}')
+        else:
+            return None
 
     def raw_tuple(self, timestamp):
         section = self.parsed[timestamp]
