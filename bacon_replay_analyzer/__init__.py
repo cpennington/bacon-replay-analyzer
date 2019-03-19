@@ -152,8 +152,12 @@ class Replay:
     @property
     def raw_tuples(self):
         yield ("SETUP", self.raw_tuple("GAME_SETUP"))
-        for index in range(2, int(float(self.parsed['SIZE'].get('size').strip('"')))+1):
-            yield (index, self.raw_tuple(str(index)))
+        section_indexes = sorted(
+            (section for section in self.parsed.sections() if section not in ('SIZE', 'GAME_SETUP')),
+            key=int
+        )
+        for section in section_indexes:
+            yield (int(section), self.raw_tuple(section))
 
     def parsed_tuple(self, index, raw_tuple):
         if index == 'SETUP':
