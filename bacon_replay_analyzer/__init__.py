@@ -122,12 +122,13 @@ class Replay:
 
     @property
     def winner(self):
-        game_end = list(self.parsed_tuples)[-1]
-        assert game_end.event_type_id in (EventId.player_wins, EventId.concede), f"No game over at the end of {self.name}"
-        if game_end.event_type_id == EventId.player_wins:
-            winning_index = game_end.fields[2][0]
-        elif game_end.event_type_id == EventId.concede:
-            winning_index = 1 - game_end.fields[2][0]
+        events = list(self.parsed_tuples)
+        end_events = [event for event in events if event.event_type_id in (EventId.player_wins, EventId.concede)]
+        assert len(end_events) == 1, f"Expected exactly 1 end-game event, saw {len(end_events)} in {self.name}"
+        if end_events[0].event_type_id == EventId.player_wins:
+            winning_index = end_events[0].fields[2][0]
+        elif end_events[0].event_type_id == EventId.concede:
+            winning_index = 1 - end_events[0].fields[2][0]
 
         return getattr(self, f'player_{winning_index}')
 
