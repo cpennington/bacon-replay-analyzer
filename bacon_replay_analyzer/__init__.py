@@ -122,13 +122,14 @@ class Replay:
 
     @property
     def winner(self):
-        game_end = list(self.parsed_tuples)[-2:]
-        assert game_end[1].event_type_id == EventId.game_over, f"No game over at the end of {self.name}"
-        assert game_end[0].event_type_id == EventId.apply_damage_dealt, f"No damage deat to end {self.name}"
-        if game_end[0].fields[2][0] == 0:
-            return self.player_1
-        else:
-            return self.player_0
+        game_end = list(self.parsed_tuples)[-1]
+        assert game_end.event_type_id in (EventId.player_wins, EventId.concede), f"No game over at the end of {self.name}"
+        if game_end.event_type_id == EventId.player_wins:
+            winning_index = game_end.fields[2][0]
+        elif game_end.event_type_id == EventId.concede:
+            winning_index = 1 - game_end.fields[2][0]
+
+        return getattr(self, f'player_{winning_index}')
 
     def raw_tuple(self, timestamp):
         section = self.parsed[timestamp]
@@ -151,7 +152,7 @@ class Replay:
     @property
     def raw_tuples(self):
         yield ("SETUP", self.raw_tuple("GAME_SETUP"))
-        for index in range(2, int(float(self.parsed['SIZE'].get('size').strip('"')))):
+        for index in range(2, int(float(self.parsed['SIZE'].get('size').strip('"')))+1):
             yield (index, self.raw_tuple(str(index)))
 
     def parsed_tuple(self, index, raw_tuple):

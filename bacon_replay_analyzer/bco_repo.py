@@ -5,13 +5,14 @@ from collections import defaultdict
 from enum import Enum
 
 class EventId(Enum):
+    player_wins = -601
     ante = -804
     reveal = -812
     discard = -815
     deal_damage = -902
     apply_damage_dealt = -905
     soak_damage = -906
-    game_over = -1010
+    concede = -924
     pair_options = -1200
     ante_options = -1201
 
