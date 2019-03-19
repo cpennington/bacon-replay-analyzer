@@ -2,57 +2,43 @@ import json
 import sys
 from configparser import ConfigParser
 from enum import Enum
-import attr
 from collections import defaultdict
 from pprint import pprint
-
-# repoFile = open(r"BCO-resource\bco_repo.json", encoding='utf-8')
-# #replayTest = open(r"BCO-resource\1eaf872c-e5bc-4d67-a6b7-0150acbc4f0a_replay.bcr", encoding='utf-8')
-# replayTest = open(input("Replay file path: "), encoding='utf-8')
-
-class ReadData(Enum):
-    readBase0 = 1
-    readStyle0 = 2
-    readFinisher0 = 3
-    readBase1 = 4
-    readStyle1 = 5
-    readFinisher1 = 6
+from .bco_repo import REPO, EventId
+import os
+from datetime import datetime
 
 
-def show_fighter(event_data, step):
-    print()
-    if event_data["2_value"][0] == "0":
-        print(p0charName, step)
-    if event_data["2_value"][0] == "1":
-        print(p1charName, step)
-
-
-def int_temp(event_data, field):
-    return int(event_data[field][:event_data[field].find(".")])
-
-class EventId(Enum):
-    reveal = -812
-    ante = -804
-    ante_options = -1201
-    pair_options = -1200
-    discard = -815
-
-    @classmethod
-    def read(cls, value):
-        try:
-            return EventId(value)
-        except ValueError:
-            return value
-
-class Event:
+class BaseEvent:
     KNOWN_FIELDS = {
-        0: 'event_type_id',
-        1: 'previous_index',
     }
+    FIRST_DATA_FIELD = 0
 
     def __init__(self, index, *fields):
         self.index = index
         self.fields = fields
+
+    @property
+    def described_fields(self):
+        event_data = REPO.game_event_data.get(self.event_type_id, {})
+        for idx, value in enumerate(self.fields):
+            data_field_idx = idx - self.FIRST_DATA_FIELD + 1
+            if idx in self.KNOWN_FIELDS:
+                yield (self.KNOWN_FIELDS[idx], getattr(self, self.KNOWN_FIELDS[idx], self.fields[idx][0]))
+            elif (data_field_idx) in event_data:
+                yield (event_data[data_field_idx].attr_description, value)
+            else:
+                yield ('UNKNOWN', value)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.index}, {self.event_type_id}, {self.previous_index}, *{self.fields})"
+
+class Event(BaseEvent):
+    KNOWN_FIELDS = {
+        0: 'event_type_id',
+        1: 'previous_index',
+    }
+    FIRST_DATA_FIELD = 2
 
     @property
     def event_type_id(self):
@@ -61,26 +47,34 @@ class Event:
         except ValueError:
             return self.fields[0][0]
 
-    @property
-    def previous_index(self):
-        return self.fields[1][0]
+
+class Setup(BaseEvent):
+    KNOWN_FIELDS = {
+        2: 'player_0_fighter',
+        4: 'player_0_name',
+        10: 'player_1_fighter',
+        12: 'player_1_name',
+    }
 
     @property
-    def described_fields(self):
-        event_data = bco_repo.game_event_data.get(self.event_type_id, {})
-        for idx, value in enumerate(self.fields):
-            if idx in self.KNOWN_FIELDS:
-                yield (self.KNOWN_FIELDS[idx], getattr(self, self.KNOWN_FIELDS[idx]))
-            elif (idx-1) in event_data:
-                yield (event_data[idx-1].attr_description, value)
-            else:
-                yield ('UNKNOWN', value)
+    def player_0_name(self):
+        return self.fields[4][0]
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.index}, {self.event_type_id}, {self.previous_index}, *{self.fields})"
+    @property
+    def player_0_fighter(self):
+        return REPO.fighter[self.fields[2][0]]
 
-class Setup(Event):
-    pass
+    @property
+    def player_1_name(self):
+        return self.fields[12][0]
+
+    @property
+    def player_1_fighter(self):
+        return REPO.fighter[self.fields[10][0]]
+
+    def __init__(self, index, *fields):
+        self.event_type_id = 'GAME_SETUP'
+        super(Setup, self).__init__(index, *fields)
 
 EVENT_TYPES = defaultdict(lambda: Event, {
     # EventId.reveal: Reveal,
@@ -91,55 +85,50 @@ EVENT_TYPES = defaultdict(lambda: Event, {
 })
 
 
-@attr.s
-class GameEventData:
-    event_id = attr.ib(converter=int)
-    attr_index = attr.ib(converter=int)
-    game_state_query = attr.ib(converter=lambda v: bco_repo.game_state_query[int(v)])
-    param_4 = attr.ib(converter=int)
-    param_5 = attr.ib(converter=int)
-    attr_description = attr.ib()
-
-@attr.s
-class GameStateQuery:
-    id = attr.ib(converter=int)
-    name = attr.ib()
-    description = attr.ib()
-    param_3 = attr.ib(converter=int)
-    func = attr.ib()
-    param_name = attr.ib()
-    param_6 = attr.ib(converter=int)
-    param_7 = attr.ib()
-    param_8 = attr.ib(converter=int)
-
-
-class BCORepo:
-    def __init__(self, repo_file):
-        self.data = json.load(repo_file)
-
-        self.game_state_query = {
-            int(row[0]): GameStateQuery(*row)
-            for row in self.data['repo']['gamestatequery']
-        }
-
-        self._game_event_data = None
-
-    @property
-    def game_event_data(self):
-        if self._game_event_data is None:
-            self._game_event_data = defaultdict(dict)
-            for row in self.data['repo']['gameeventdata']:
-                self._game_event_data[EventId.read(int(row[0]))][int(row[1])] = GameEventData(*row)
-        return self._game_event_data
-
-with open('./bco_repo.json') as data_file:
-    bco_repo = BCORepo(data_file)
-
-
 class Replay:
     def __init__(self, filename):
+        self.name = filename
         self.parsed = ConfigParser()
         self.parsed.read([filename])
+
+    @property
+    def match_date(self):
+        stat = os.stat(self.name)
+        return datetime.fromtimestamp(stat.st_mtime)
+
+    @property
+    def player_0(self):
+        setup = next(self.parsed_tuples)
+        assert setup.event_type_id == 'GAME_SETUP'
+        return setup.player_0_name
+
+    @property
+    def player_1(self):
+        setup = next(self.parsed_tuples)
+        assert setup.event_type_id == 'GAME_SETUP'
+        return setup.player_1_name
+
+    @property
+    def fighter_0(self):
+        setup = next(self.parsed_tuples)
+        assert setup.event_type_id == 'GAME_SETUP'
+        return setup.player_0_fighter
+
+    @property
+    def fighter_1(self):
+        setup = next(self.parsed_tuples)
+        assert setup.event_type_id == 'GAME_SETUP'
+        return setup.player_1_fighter
+
+    @property
+    def winner(self):
+        game_end = list(self.parsed_tuples)[-2:]
+        assert game_end[1].event_type_id == EventId.game_over, f"No game over at the end of {self.name}"
+        assert game_end[0].event_type_id == EventId.apply_damage_dealt, f"No damage deat to end {self.name}"
+        if game_end[0].fields[2][0] == 0:
+            return self.player_1
+        else:
+            return self.player_0
 
     def raw_tuple(self, timestamp):
         section = self.parsed[timestamp]
@@ -167,7 +156,7 @@ class Replay:
 
     def parsed_tuple(self, index, raw_tuple):
         if index == 'SETUP':
-            return Setup(*raw_tuple)
+            return Setup(index, *raw_tuple)
         else:
             try:
                 event_type = EventId(raw_tuple[0][0])
@@ -277,8 +266,3 @@ def parse_replay(filename):
                 else:
                     cardId = int_temp(temp, str(i)+"_value")
                     print(cardId, elemDict[cardId])
-
-if __name__ == "__main__":
-    replay = Replay(sys.argv[1])
-    for tuple in replay.parsed_tuples:
-        pprint(list(tuple.described_fields))
