@@ -1,0 +1,22 @@
+CHANGES
+=======
+
+0.0.3
+-----
+
+* Use basename as replay name
+
+0.0.2
+-----
+
+* Check for game-end events anywhere within the replay
+* Handle replays with no SIZE key
+* Try to fix package build
+* Improve game-end detection
+* Parse game setup and fighters
+* Fix event data bindings
+* Combine events with their gameeventdata descriptions
+* Wrap classes around events
+* Add requirements files
+* Start adding machinery around how to parse replay files
+* Original work by seasonsb

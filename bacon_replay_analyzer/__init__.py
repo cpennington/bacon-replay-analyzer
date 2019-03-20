@@ -87,13 +87,17 @@ EVENT_TYPES = defaultdict(lambda: Event, {
 
 class Replay:
     def __init__(self, filename):
-        self.name = os.path.basename(filename)
+        self.name = filename
         self.parsed = ConfigParser()
         self.parsed.read([filename])
 
     @property
+    def name(self):
+        return os.path.basenself.filename)
+
+    @property
     def match_date(self):
-        stat = os.stat(self.name)
+        stat = os.stat(self.filename)
         return datetime.fromtimestamp(stat.st_mtime)
 
     @property
@@ -118,15 +122,15 @@ class Replay:
     def fighter_1(self):
         setup = next(self.parsed_tuples)
         assert setup.event_type_id == 'GAME_SETUP'
-        return setup.player_1_fighter
+        etup.player_1_fighter
 
-    @property
+    perty
+    r event in ev    @property
     def winner(self):
         events = list(self.parsed_tuples)
-        end_events = [event for event in events if event.event_type_id in (EventId.player_wins, EventId.concede)]
-        assert len(end_events) <= 1, f"Expected exactly 1 end-game event, saw {len(end_events)} in {self.name}"
-        if end_events:
-            if end_events[0].event_type_id == EventId.player_wins:
+        end_events = [event for event in evper    der(self):
+              eventsevent(self.parsed_tuples)
+events = [event for  events if evnt_type_id == EventId.player_wins:
                 winning_index = end_events[0].fields[2][0]
             elif end_events[0].event_type_id == EventId.concede:
                 winning_index = 1 - end_events[0].fields[2][0]
@@ -267,10 +271,3 @@ def parse_replay(filename):
                         nextNum = i + int_temp(temp, str(i)+"_value")+1
                         print(p1charName, "Styles")
                         readStep = ReadData(readStep.value+1)
-                    elif readStep == ReadData(6):
-                        nextNum = i + int_temp(temp, str(i)+"_value")+1
-                        print(p1charName, "Finishers")
-                        #readStep = ReadData(readStep.value+1)
-                else:
-                    cardId = int_temp(temp, str(i)+"_value")
-                    print(cardId, elemDict[cardId])
