@@ -130,7 +130,7 @@ class Replay:
         end_events = [event for event in events if event.event_type_id in (EventId.player_wins, EventId.concede)]
         assert len(end_events) <= 1, f"Unexpectedly more than one game-end event in {self.name}"
         if end_events:
-            if event_type_id == EventId.player_wins:
+            if end_events[0].event_type_id == EventId.player_wins:
                 winning_index = end_events[0].fields[2][0]
             elif end_events[0].event_type_id == EventId.concede:
                 winning_index = 1 - end_events[0].fields[2][0]
