@@ -127,14 +127,20 @@ class Replay:
     @property
     def winner(self):
         events = list(self.parsed_tuples)
-        end_events = [event for event in events if event.event_type_id in (EventId.player_wins, EventId.concede)]
-        assert len(end_events) <= 1, f"Unexpectedly more than one game-end event in {self.name}"
-        if end_events:
-            if end_events[0].event_type_id == EventId.player_wins:
-                winning_index = end_events[0].fields[2][0]
-            elif end_events[0].event_type_id == EventId.concede:
-                winning_index = 1 - end_events[0].fields[2][0]
+        end_events = (event for event in events if event.event_type_id in (EventId.player_wins, EventId.concede))
+
+        def _winner(event):
+            if event.event_type_id == EventId.player_wins:
+                winning_index = event.fields[2][0]
+            elif event.event_type_id == EventId.concede:
+                winning_index = 1 - event.fields[2][0]
             return getattr(self, f'player_{winning_index}')
+
+        winners = set(_winner(event) for event in end_events)
+
+        assert len(winners) <= 1, f"Unexpectedly more than one winner in {self.name}"
+        if len(winners) == 1:
+            return winners.pop()
         else:
             return None
 
