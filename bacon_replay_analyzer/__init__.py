@@ -136,7 +136,7 @@ class Replay:
                 winning_index = 1 - event.fields[2][0]
             return getattr(self, f'player_{winning_index}')
 
-        winners = set(_winner(event) for event in end_events)
+        winners = set(_winner(event) for event in end_events if len(event.fields) >= 3)
 
         assert len(winners) <= 1, f"Unexpectedly more than one winner in {self.name}"
         if len(winners) == 1:
