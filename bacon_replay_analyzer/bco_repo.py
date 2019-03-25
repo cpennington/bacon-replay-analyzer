@@ -4,6 +4,7 @@ import pkg_resources
 from collections import defaultdict
 from enum import Enum
 
+
 class EventId(Enum):
     player_wins = -601
     ante = -804
@@ -23,6 +24,7 @@ class EventId(Enum):
         except ValueError:
             return value
 
+
 @attr.s
 class GameEventData:
     event_id = attr.ib(converter=int)
@@ -31,6 +33,7 @@ class GameEventData:
     param_4 = attr.ib(converter=int)
     param_5 = attr.ib(converter=int)
     attr_description = attr.ib()
+
 
 @attr.s
 class GameStateQuery:
@@ -69,13 +72,13 @@ class BCORepo:
 
         self.game_state_query = {
             query.id: query
-            for query
-            in (GameStateQuery(*row) for row in self.data['repo']['gamestatequery'])
+            for query in (
+                GameStateQuery(*row) for row in self.data["repo"]["gamestatequery"]
+            )
         }
         self.fighter = {
             fighter.id: fighter
-            for fighter
-            in (Fighter(*row) for row in self.data['repo']['fighter'])
+            for fighter in (Fighter(*row) for row in self.data["repo"]["fighter"])
         }
 
         self._game_event_data = None
@@ -84,8 +87,15 @@ class BCORepo:
     def game_event_data(self):
         if self._game_event_data is None:
             self._game_event_data = defaultdict(dict)
-            for row in self.data['repo']['gameeventdata']:
-                self._game_event_data[EventId.read(int(row[0]))][int(row[1])] = GameEventData(*row)
+            for row in self.data["repo"]["gameeventdata"]:
+                self._game_event_data[EventId.read(int(row[0]))][
+                    int(row[1])
+                ] = GameEventData(*row)
         return self._game_event_data
 
-REPO = BCORepo(pkg_resources.resource_stream('bacon_replay_analyzer', 'var/bco-analyzer/bco_repo.json'))
+
+REPO = BCORepo(
+    pkg_resources.resource_stream(
+        "bacon_replay_analyzer", "var/bco-analyzer/bco_repo.json"
+    )
+)
