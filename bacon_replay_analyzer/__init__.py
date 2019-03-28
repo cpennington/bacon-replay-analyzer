@@ -52,8 +52,14 @@ class Setup(BaseEvent):
     KNOWN_FIELDS = {
         2: "player_0_fighter",
         4: "player_0_name",
+        7: "player_0_wins",
+        8: "player_0_losses",
+        9: "player_0_ties",
         10: "player_1_fighter",
         12: "player_1_name",
+        15: "player_1_wins",
+        16: "player_1_losses",
+        17: "player_1_ties",
     }
 
     @property
@@ -65,12 +71,20 @@ class Setup(BaseEvent):
         return REPO.fighter[self.fields[2][0]]
 
     @property
+    def player_0_record(self):
+        return (self.fields[7][0], self.fields[8][0], self.fields[9][0])
+
+    @property
     def player_1_name(self):
         return self.fields[12][0]
 
     @property
     def player_1_fighter(self):
         return REPO.fighter[self.fields[10][0]]
+
+    @property
+    def player_1_record(self):
+        return (self.fields[15][0], self.fields[16][0], self.fields[17][0])
 
     def __init__(self, index, *fields):
         self.event_type_id = "GAME_SETUP"
@@ -127,6 +141,18 @@ class Replay:
         setup = next(self.parsed_tuples)
         assert setup.event_type_id == "GAME_SETUP"
         return setup.player_1_fighter
+
+    @property
+    def record_0(self):
+        setup = next(self.parsed_tuples)
+        assert setup.event_type_id == "GAME_SETUP"
+        return setup.player_0_record
+
+    @property
+    def record_1(self):
+        setup = next(self.parsed_tuples)
+        assert setup.event_type_id == "GAME_SETUP"
+        return setup.player_1_record
 
     @property
     def winner(self):
